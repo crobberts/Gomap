@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net"
 	"sort"
-	"flag"
 )
 
 func worker(ports, results chan int) {
@@ -22,13 +21,18 @@ func worker(ports, results chan int) {
 	}
 }
 
-func parseArgs() {
-	ptr := flag.String("test", "just a test", "a simple test")
-	fmt.Println("test:", *ptr)
-}
-
 func main() {
-	parseArgs()
+	hostValid,portValid := ParseArgs()
+
+	if !hostValid {
+		fmt.Println("Host is not valid")
+		return
+	}
+
+	if !portValid {
+		fmt.Println("Port/Ports not valid")
+		return
+	}
 
 	ports := make(chan int)
 	results := make(chan int)
