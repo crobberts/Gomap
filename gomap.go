@@ -6,9 +6,10 @@ import (
 	"sort"
 )
 
-func worker(ports, results chan int) {
+func worker(hostname string, ports, results chan int) {
+
 	for p := range ports {
-		addr := fmt.Sprintf("localhost:%d", p)
+		addr := fmt.Sprintf("%s:%d", hostname, p)
 		conn, err := net.Dial("tcp", addr)
 
 		if err != nil {
@@ -22,26 +23,35 @@ func worker(ports, results chan int) {
 }
 
 func main() {
-	hostValid,portValid := ParseArgs()
+	PrintBanner()
+	hostValid, portsValid := ParseArgs()
 
-	if !hostValid {
-		fmt.Println("Host is not valid")
-		return
+	var hostname string
+	var portSlice = make([]int, 1, 1)
+
+	for key, val := range hostValid {
+		if !val {
+			return
+		}
+
+		hostname = key
 	}
 
-	if !portValid {
-		fmt.Println("Port/Ports not valid")
-		return
+	for _, val := range portsValid {
+		for i := 0; i < len(portSlice); i++ {
+			portSlice[i] = val[i]
+			fmt.Println(portSlice)
+		}
 	}
 
 	ports := make(chan int)
 	results := make(chan int)
-	worker_num := 100;
+	workerNum := 100
 
 	var openports []int
 
-	for i := 0; i < worker_num; i++ {
-		go worker(ports, results);
+	for i := 0; i < workerNum; i++ {
+		go worker(hostname, ports, results)
 	}
 
 	go func() {
@@ -52,7 +62,7 @@ func main() {
 
 	for i := 0; i < 1024; i++ {
 		port := <-results
-		
+
 		if port != 0 {
 			openports = append(openports, port)
 		}
