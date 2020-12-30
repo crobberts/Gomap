@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -11,7 +10,7 @@ import (
 //ParseArgs parses command line args
 func ParseArgs() (hostValid map[string]bool, portValid map[bool][]int) {
 	hostname := flag.String("i", "", "The `ip/ips` to scan")
-	port := flag.String("p", "", "The `port/ports` to scan on given host")
+	port := flag.String("p", "1-1024", "The `port/ports` to scan on given host")
 	flag.Parse()
 
 	return validateHost(hostname), validatePort(port)
@@ -36,12 +35,13 @@ func validatePort(port *string) map[bool][]int {
 	var ports = make(map[bool][]int)
 
 	if strings.Contains(*port, "-") {
-		return parsePortRange(*port, ports)
+		return parsePortRange(*port)
 	}
 
-	trimmed := strings.ReplaceAll(*port, " ", "")
-	gPorts := strings.Split(trimmed, ",")
-	fmt.Println(gPorts)
+	if strings.Contains(*port, ",") {
+		return parsePortRange(*port)
+	}
+
 	gPort, err := strconv.Atoi(*port)
 
 	if err != nil {
@@ -59,19 +59,22 @@ func validatePort(port *string) map[bool][]int {
 	return ports
 }
 
-func parsePortRange(portsArgs string, ports map[bool][]int) map[bool][]int {
+func parsePortRange(portsArgs string) map[bool][]int {
 	parts := strings.Split(portsArgs, "-")
 	startPort, sErr := strconv.Atoi(parts[0])
 	endPort, eErr := strconv.Atoi(parts[1])
+	var ports = make(map[bool][]int)
+	k := make([]int, 0, 0)
 
-	if sErr != nil || eErr != nil {
+	if sErr != nil || eErr != nil || endPort <= startPort || startPort < 1 || endPort > 65535 {
 		return genericPortError(ports)
 	}
 
 	for i := startPort; i <= endPort; i++ {
-		fmt.Println(i)
-
+		k = append(k, i)
 	}
+
+	ports[true] = k
 	return ports
 }
 
