@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -57,7 +56,6 @@ func validatePort(port *string) map[string][]int {
 	l := append(p, gPort)
 
 	ports["single"] = l
-	fmt.Println(ports["single"])
 	return ports
 }
 
