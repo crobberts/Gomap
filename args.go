@@ -2,13 +2,14 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
 )
 
 //ParseArgs parses command line args
-func ParseArgs() (hostValid map[string]bool, portValid map[bool][]int) {
+func ParseArgs() (hostValid map[string]bool, portValid map[string][]int) {
 	hostname := flag.String("i", "", "The `ip/ips` to scan")
 	port := flag.String("p", "1-1024", "The `port/ports` to scan on given host")
 	flag.Parse()
@@ -31,55 +32,76 @@ func validateHost(hostname *string) map[string]bool {
 	return hostnameValid
 }
 
-func validatePort(port *string) map[bool][]int {
-	var ports = make(map[bool][]int)
+func validatePort(port *string) map[string][]int {
+	var ports = make(map[string][]int)
 
 	if strings.Contains(*port, "-") {
 		return parsePortRange(*port)
 	}
 
 	if strings.Contains(*port, ",") {
-		return parsePortRange(*port)
+		return parsePortList(*port)
 	}
 
 	gPort, err := strconv.Atoi(*port)
 
 	if err != nil {
-		return genericPortError(ports)
+		return genericPortError()
 	}
 
 	if gPort < 1 || gPort > 65535 {
-		return genericPortError(ports)
+		return genericPortError()
 	}
 
 	var p = make([]int, 0)
 	l := append(p, gPort)
 
-	ports[true] = l
+	ports["single"] = l
+	fmt.Println(ports["single"])
 	return ports
 }
 
-func parsePortRange(portsArgs string) map[bool][]int {
+func parsePortRange(portsArgs string) map[string][]int {
 	parts := strings.Split(portsArgs, "-")
 	startPort, sErr := strconv.Atoi(parts[0])
 	endPort, eErr := strconv.Atoi(parts[1])
-	var ports = make(map[bool][]int)
+	var ports = make(map[string][]int)
 	k := make([]int, 0, 0)
 
 	if sErr != nil || eErr != nil || endPort <= startPort || startPort < 1 || endPort > 65535 {
-		return genericPortError(ports)
+		return genericPortError()
 	}
 
 	for i := startPort; i <= endPort; i++ {
 		k = append(k, i)
 	}
 
-	ports[true] = k
+	ports["range"] = k
 	return ports
 }
 
-func genericPortError(ports map[bool][]int) map[bool][]int {
+func parsePortList(portsArgs string) map[string][]int {
+	ports := strings.Split(portsArgs, ",")
+	p := make(map[string][]int)
+	pr := make([]int, 0, 0)
+
+	for i := 0; i < len(ports); i++ {
+		conv, err := strconv.Atoi(ports[i])
+
+		if err != nil {
+			return genericPortError()
+		}
+
+		pr = append(pr, conv)
+	}
+
+	p["list"] = pr
+	return p
+}
+
+func genericPortError() map[string][]int {
 	flag.PrintDefaults()
-	ports[false] = nil
+	ports := make(map[string][]int)
+	ports["false"] = nil
 	return ports
 }

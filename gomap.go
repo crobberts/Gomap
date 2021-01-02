@@ -8,6 +8,8 @@ import (
 
 var startPort int
 var endPort int
+var workerNum int = 100
+var portList []int
 
 func worker(hostname string, ports, results chan int) {
 
@@ -15,6 +17,7 @@ func worker(hostname string, ports, results chan int) {
 		addr := fmt.Sprintf("%s:%d", hostname, p)
 		conn, err := net.Dial("tcp", addr)
 
+		fmt.Printf("testing %s:%d ..\n", hostname, p)
 		if err != nil {
 			results <- 0
 			continue
@@ -41,20 +44,15 @@ func scanSinglePort(hostname string, port int) {
 func main() {
 	PrintBanner()
 	hostValid, portsValid := ParseArgs()
-
+	ports := make(chan int)
+	results := make(chan int)
+	var openports []int
+	list := false
 	if hostValid == nil && portsValid == nil {
 		return
 	}
 
 	var hostname string
-	var portSlice = portsValid[true]
-
-	if len(portSlice) == 0 {
-		return
-	}
-
-	startPort = portSlice[0]
-	endPort = portSlice[len(portSlice)-1]
 
 	for key, val := range hostValid {
 		if !val {
@@ -64,31 +62,51 @@ func main() {
 		hostname = key
 	}
 
-	if len(portsValid[true]) == 1 {
+	if val, ok := portsValid["single"]; ok {
+		startPort = val[0]
 		scanSinglePort(hostname, startPort)
 		return
+	} else if val, ok := portsValid["range"]; ok {
+		startPort = val[0]
+		endPort = val[len(val)-1]
+		list = false
+	} else if val, ok := portsValid["list"]; ok {
+		list = true
+		portList = val
 	}
-
-	ports := make(chan int)
-	results := make(chan int)
-	workerNum := 100
-	var openports []int
 
 	for i := 0; i < workerNum; i++ {
 		go worker(hostname, ports, results)
 	}
 
-	go func() {
-		for i := startPort; i <= endPort; i++ {
-			ports <- i
+	if list {
+		go func() {
+			for _, val := range portList {
+				ports <- val
+			}
+		}()
+
+		for i := 0; i < len(portList); i++ {
+			port := <-results
+
+			if port != 0 {
+				openports = append(openports, port)
+			}
 		}
-	}()
 
-	for i := startPort; i <= endPort; i++ {
-		port := <-results
+	} else {
+		go func() {
+			for i := startPort; i <= endPort; i++ {
+				ports <- i
+			}
+		}()
 
-		if port != 0 {
-			openports = append(openports, port)
+		for i := startPort; i <= endPort; i++ {
+			port := <-results
+
+			if port != 0 {
+				openports = append(openports, port)
+			}
 		}
 	}
 
